@@ -1,25 +1,21 @@
 <template>
-  <div class="home">
-    <!-- <img alt="Vue logo" src="../assets/logo.png"> -->
-    <button @click="this.getCities()">aaaaaaaaaaaaaa</button>
-    <a v-for="task in tasks" :key="task">{{task}}</a>
-  </div>
-  <div>
-    <input v-model="this.inputtask">
-  </div>
-  <div>
-    <button @click="fetchtasks()">いけ!</button>
-  </div>
-    <div>
+  <div class = "header">
     <button @click="logingoogle()">ログイン</button>
   </div>
+  <div class="card">
+    <p v-for="task in tasks" :key="task">{{task.task}}</p>
+  </div>
+  <div>
+    <input v-model="this.inputtask"  @keypress.enter="onKeypressEnter()">
+  </div>
+
 </template>
 
 <script>
 // @ is an alias to /src
-import { collection, doc, getDocs ,addDoc} from 'firebase/firestore';
+import { collection, doc, getDocs ,addDoc,where} from 'firebase/firestore';
 import { db } from "../main";
-import { getAuth, signInWithPopup,GoogleAuthProvider } from "firebase/auth";
+import { getAuth, signInWithPopup,GoogleAuthProvider,onAuthStateChanged } from "firebase/auth";
 
 export default {
   name: 'Home',
@@ -33,12 +29,33 @@ export default {
   components: {
   },
   mounted() {
-    this.getCities();
+    this.gettasks();
+    this.getfireauth()
   },
   methods: {
-  async getCities() {
-  // const citiesCol = collection(db, 'cities');
-  const citySnapshot = await getDocs(collection(db, "tasks"));
+    onKeypressEnter(){
+      this.fetchtasks();
+    },
+  getfireauth(){
+      const auth = getAuth();
+  onAuthStateChanged(auth, (user) => {
+  if (user) {
+    // User is signed in, see docs for a list of available properties
+    // https://firebase.google.com/docs/reference/js/firebase.User
+    this.userid = user.uid;
+    // ...
+  } else {
+    // User is signed out
+    // ...
+    this.logingoogle()
+  }
+});
+
+  },
+  async gettasks() {
+  const citySnapshot = await getDocs(collection(db, "tasks"), where("id", "==", this.userid));
+  console.log(this.userid)
+  this.tasks.splice(0,this.tasks.length)
   citySnapshot.forEach((doc)=>{
     this.tasks.push({...doc.data(),id:doc.id});
     console.log({...doc.data(),id:doc.id})
@@ -49,9 +66,10 @@ async fetchtasks(){
     const docRef = await addDoc(collection(db, "tasks"), {
     task: this.inputtask,
     userid: this.userid
-});
-console.log("Document written with ID: ", docRef.id);
-
+  });
+  console.log("Document written with ID: ", docRef.id);
+  this.inputtask = ""
+  this.gettasks();
   },
   logingoogle(){
     const provider = new GoogleAuthProvider();
@@ -78,7 +96,14 @@ console.log("Document written with ID: ", docRef.id);
     console.log(errorCode,errorMessage,email,credential)
   });
   }
-  }
+  },
+  pushData(array, value){
+	
+	if (array.indexOf(value) == -1){
+		array.push(value);
+	}
+	return true;
+}
 }
 </script>
 
